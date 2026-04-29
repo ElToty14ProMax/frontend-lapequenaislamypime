@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   color-scheme: light;
   font-family:
@@ -127,6 +131,99 @@ img {
 .reveal.is-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+.route-fade-enter-active,
+.route-fade-leave-active {
+  transition:
+    opacity 260ms var(--ease),
+    transform 260ms var(--ease),
+    filter 260ms ease;
+}
+
+.route-fade-enter-from {
+  opacity: 0;
+  transform: translateY(10px) scale(0.992);
+  filter: blur(4px);
+}
+
+.route-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.996);
+  filter: blur(3px);
+}
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(10, 101, 183, 0.22), transparent 26rem),
+    rgba(4, 19, 35, 0.46);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.loading-panel {
+  width: min(360px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: var(--shadow-strong);
+}
+
+.loading-panel strong {
+  font-size: 1.08rem;
+}
+
+.loading-panel span {
+  color: var(--muted);
+}
+
+.loading-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--blue-soft), var(--green-soft));
+}
+
+.loading-spinner {
+  color: var(--blue);
+  animation: spin 900ms linear infinite;
+}
+
+.loading-shield {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: var(--green);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 180ms ease;
+}
+
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
 }
 
 .site-header {
@@ -1089,6 +1186,96 @@ tbody tr:hover {
   border: 0;
   border-radius: 8px;
   background: #edf2f7;
+}
+
+.image-manager {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 0 0, rgba(10, 101, 183, 0.08), transparent 18rem),
+    rgba(255, 255, 255, 0.68);
+}
+
+.image-manager h3 {
+  margin: 0;
+}
+
+.image-url-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.image-dropzone {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  min-height: 132px;
+  border: 1px dashed rgba(10, 101, 183, 0.42);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(135deg, rgba(232, 243, 252, 0.92), rgba(233, 247, 239, 0.72)),
+    rgba(255, 255, 255, 0.72);
+  text-align: center;
+  color: var(--blue-dark);
+  cursor: pointer;
+  transition:
+    transform 180ms var(--ease),
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.image-dropzone:hover {
+  transform: translateY(-2px);
+  border-color: var(--blue);
+  box-shadow: 0 14px 34px rgba(10, 101, 183, 0.12);
+}
+
+.image-dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.image-dropzone span {
+  font-weight: 900;
+}
+
+.image-dropzone small {
+  max-width: 34rem;
+  color: var(--muted);
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.image-preview-grid figure {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.image-preview-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.image-preview-grid figcaption {
+  padding: 8px;
+  color: var(--muted);
+  font-size: 0.76rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

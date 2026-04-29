@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
+import { useSeo } from '@/composables/useSeo';
 import { firstValidationMessage, money, api } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
@@ -29,6 +30,12 @@ async function load() {
   error.value = '';
   try {
     product.value = await api.product(String(route.params.slug), catalog.currency);
+    useSeo({
+      title: product.value.name,
+      description: product.value.description || `Compra ${product.value.name} en La Pequeña Isla con precios en USD y CUP.`,
+      image: product.value.images?.[0]?.url,
+      type: 'product',
+    });
   } catch (err) {
     error.value = firstValidationMessage(err);
   } finally {

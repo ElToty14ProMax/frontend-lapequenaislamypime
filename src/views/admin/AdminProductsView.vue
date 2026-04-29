@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 
 import { api, firstValidationMessage, money } from '@/services/api';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -9,6 +9,8 @@ const products = ref<Paginated<Product> | null>(null);
 const categories = ref<Category[]>([]);
 const editingId = ref<number | undefined>();
 const error = ref('');
+const imageUrls = ref<string[]>(['']);
+const localPreviews = ref<Array<{ name: string; url: string; size: string }>>([]);
 const form = reactive({
   category_id: '',
   sku: '',
@@ -23,8 +25,9 @@ const form = reactive({
   low_stock_threshold: 5,
   price_usd: 0,
   price_cup: 0,
-  image_url: '',
 });
+
+const cleanImageUrls = computed(() => imageUrls.value.map((url) => url.trim()).filter(Boolean));
 
 function flattenCategories(items: Category[]) {
   return items.flatMap((category) => [category, ...(category.children ?? [])]);
@@ -51,7 +54,7 @@ function edit(product: Product) {
   form.low_stock_threshold = product.low_stock_threshold;
   form.price_usd = (product.price_usd_cents ?? 0) / 100;
   form.price_cup = (product.price_cup_cents ?? 0) / 100;
-  form.image_url = product.images?.[0]?.url ?? '';
+  imageUrls.value = product.images?.length ? product.images.map((image) => image.url) : [''];
 }
 
 function reset() {
@@ -70,8 +73,33 @@ function reset() {
     low_stock_threshold: 5,
     price_usd: 0,
     price_cup: 0,
-    image_url: '',
   });
+  imageUrls.value = [''];
+  clearLocalPreviews();
+}
+
+function addImageUrl() {
+  imageUrls.value.push('');
+}
+
+function removeImageUrl(index: number) {
+  imageUrls.value.splice(index, 1);
+  if (!imageUrls.value.length) imageUrls.value.push('');
+}
+
+function clearLocalPreviews() {
+  localPreviews.value.forEach((preview) => URL.revokeObjectURL(preview.url));
+  localPreviews.value = [];
+}
+
+function handleImageFiles(event: Event) {
+  const files = Array.from((event.target as HTMLInputElement).files ?? []);
+  clearLocalPreviews();
+  localPreviews.value = files.map((file) => ({
+    name: file.name,
+    url: URL.createObjectURL(file),
+    size: `${Math.max(file.size / 1024 / 1024, 0.01).toFixed(2)} MB`,
+  }));
 }
 
 async function save() {
@@ -92,7 +120,12 @@ async function save() {
         low_stock_threshold: Number(form.low_stock_threshold),
         price_usd_cents: Math.round(Number(form.price_usd) * 100),
         price_cup_cents: Math.round(Number(form.price_cup) * 100),
-        images: form.image_url ? [{ url: form.image_url, alt: form.name, is_primary: true }] : [],
+        images: cleanImageUrls.value.map((url, index) => ({
+          url,
+          alt: form.name,
+          is_primary: index === 0,
+          sort_order: index,
+        })),
       },
       editingId.value,
     );
@@ -132,7 +165,7 @@ onMounted(load);
       </div>
       <form class="form-panel admin-form" @submit.prevent="save">
         <h2>{{ editingId ? 'Editar' : 'Nuevo' }} producto</h2>
-        <select v-model="form.category_id" required><option value="">Categoria</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select>
+        <select v-model="form.category_id" required><option value="">Categoría</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select>
         <input v-model="form.sku" placeholder="SKU" required />
         <input v-model="form.name" placeholder="Nombre" required />
         <input v-model="form.slug" placeholder="Slug opcional" />
@@ -143,9 +176,41 @@ onMounted(load);
         <label><input v-model="form.track_inventory" type="checkbox" /> Controlar inventario</label>
         <input v-model.number="form.stock" type="number" min="0" placeholder="Stock" />
         <input v-model.number="form.low_stock_threshold" type="number" min="0" placeholder="Alerta de stock" />
-        <input v-model.number="form.price_usd" type="number" min="0" step="0.01" placeholder="Precio USD" />
-        <input v-model.number="form.price_cup" type="number" min="0" step="0.01" placeholder="Precio CUP" />
-        <input v-model="form.image_url" type="url" placeholder="URL de imagen" />
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input v-model.number="form.price_usd" type="number" min="0" step="0.01" placeholder="Precio USD" />
+          <input v-model.number="form.price_cup" type="number" min="0" step="0.01" placeholder="Precio CUP" />
+        </div>
+
+        <section class="image-manager">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3>Imágenes del producto</h3>
+              <p class="muted">La API actual recibe URLs. La primera imagen será la principal.</p>
+            </div>
+            <button class="ghost-button" type="button" @click="addImageUrl">Agregar URL</button>
+          </div>
+
+          <div class="grid gap-2">
+            <label v-for="(_, index) in imageUrls" :key="index" class="image-url-row">
+              <input v-model="imageUrls[index]" type="url" placeholder="https://..." />
+              <button class="danger-button" type="button" @click="removeImageUrl(index)">Quitar</button>
+            </label>
+          </div>
+
+          <label class="image-dropzone">
+            <input type="file" accept="image/*" multiple @change="handleImageFiles" />
+            <span>Importar imágenes para previsualizar</span>
+            <small>Para guardarlas definitivamente hace falta un endpoint backend que suba a storage y devuelva una URL.</small>
+          </label>
+
+          <div v-if="localPreviews.length" class="image-preview-grid">
+            <figure v-for="preview in localPreviews" :key="preview.url">
+              <img :src="preview.url" :alt="preview.name" />
+              <figcaption>{{ preview.name }} · {{ preview.size }}</figcaption>
+            </figure>
+          </div>
+        </section>
+
         <button class="primary-button" type="submit">Guardar producto</button>
         <button class="ghost-button" type="button" @click="reset">Limpiar</button>
       </form>

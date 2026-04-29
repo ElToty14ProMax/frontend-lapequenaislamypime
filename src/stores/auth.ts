@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 
 import { api, firstValidationMessage, tokenStorage } from '@/services/api';
+import { useUiStore } from '@/stores/ui';
 import type { User } from '@/types/api';
 
 export const useAuthStore = defineStore('auth', {
@@ -27,8 +28,10 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async login(email: string, password: string) {
+      const ui = useUiStore();
       this.loading = true;
       this.error = '';
+      ui.start('Iniciando sesión...');
       try {
         const response = await api.login({ email, password });
         tokenStorage.set(response.token);
@@ -38,11 +41,14 @@ export const useAuthStore = defineStore('auth', {
         throw error;
       } finally {
         this.loading = false;
+        ui.stop();
       }
     },
     async register(payload: { name: string; email: string; phone?: string; password: string; password_confirmation: string }) {
+      const ui = useUiStore();
       this.loading = true;
       this.error = '';
+      ui.start('Creando tu cuenta...');
       try {
         const response = await api.register(payload);
         tokenStorage.set(response.token);
@@ -52,6 +58,7 @@ export const useAuthStore = defineStore('auth', {
         throw error;
       } finally {
         this.loading = false;
+        ui.stop();
       }
     },
     async refresh() {
@@ -59,11 +66,14 @@ export const useAuthStore = defineStore('auth', {
       this.user = await api.me();
     },
     async logout() {
+      const ui = useUiStore();
+      ui.start('Cerrando sesión...');
       try {
         if (tokenStorage.get()) await api.logout();
       } finally {
         tokenStorage.clear();
         this.user = null;
+        ui.stop();
       }
     },
   },

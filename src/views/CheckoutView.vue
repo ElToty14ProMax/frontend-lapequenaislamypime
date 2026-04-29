@@ -7,10 +7,12 @@ import PageHeader from '@/components/ui/PageHeader.vue';
 import { api, firstValidationMessage, money } from '@/services/api';
 import { useAuthStore } from '@/stores/auth';
 import { useCartStore } from '@/stores/cart';
+import { useUiStore } from '@/stores/ui';
 import type { Address } from '@/types/api';
 
 const auth = useAuthStore();
 const cart = useCartStore();
+const ui = useUiStore();
 const route = useRoute();
 const router = useRouter();
 const addresses = ref<Address[]>([]);
@@ -62,6 +64,7 @@ async function payWithPaypal() {
   }
   saving.value = true;
   error.value = '';
+  ui.start('Creando pedido y conectando con PayPal...');
   try {
     const order = await api.createCheckoutOrder({
       address_id: selectedAddressId.value,
@@ -79,6 +82,7 @@ async function payWithPaypal() {
     error.value = firstValidationMessage(err);
   } finally {
     saving.value = false;
+    ui.stop();
   }
 }
 
@@ -88,12 +92,15 @@ async function captureReturn() {
   error.value = '';
   success.value = '';
   try {
+    ui.start('Confirmando pago con PayPal...');
     const order = await api.capturePaypalOrder(token);
     await cart.clear();
     success.value = `Pago confirmado. Factura generada para el pedido ${order.number}.`;
     await router.replace({ name: 'order-detail', params: { id: order.id } });
   } catch (err) {
     error.value = firstValidationMessage(err);
+  } finally {
+    ui.stop();
   }
 }
 
