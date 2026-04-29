@@ -1,0 +1,23 @@
+{
+  "name": "lapequenaisla-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^6.0.3",
+    "lucide-vue-next": "^0.554.0",
+    "pinia": "^3.0.4",
+    "vite": "^7.2.6",
+    "vue": "^3.5.25",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.1.5"
+  }
+}
