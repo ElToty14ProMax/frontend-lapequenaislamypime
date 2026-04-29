@@ -1,17 +1,9 @@
 <script setup lang="ts">
-defineProps<{ status: string }>();
+import { statusLabel } from '@/utils/status';
 
-const labels: Record<string, string> = {
-  pending: 'Pendiente',
-  paid: 'Pagado',
-  preparing: 'Preparando',
-  out_for_delivery: 'En camino',
-  delivered: 'Entregado',
-  cancelled: 'Cancelado',
-  refunded: 'Reembolsado',
-};
+defineProps<{ status: string }>();
 </script>
 
 <template>
-  <span :class="['status-badge', status]">{{ labels[status] ?? status }}</span>
+  <span :class="['status-badge', status]">{{ statusLabel(status) }}</span>
 </template>

@@ -21,11 +21,11 @@ async function submit() {
       <h1>Entrar</h1>
       <p class="muted">Accede para comprar, revisar pedidos y gestionar direcciones.</p>
       <p v-if="auth.error" class="error">{{ auth.error }}</p>
-      <label class="field">
+      <label class="field required-field">
         <span>Email</span>
         <input v-model="form.email" type="email" required autocomplete="email" />
       </label>
-      <label class="field">
+      <label class="field required-field">
         <span>Contraseña</span>
         <input v-model="form.password" type="password" required autocomplete="current-password" />
       </label>

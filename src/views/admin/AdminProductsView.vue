@@ -185,7 +185,7 @@ onMounted(load);
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3>Imágenes del producto</h3>
-              <p class="muted">La API actual recibe URLs. La primera imagen será la principal.</p>
+              <p class="muted">El sistema actual recibe URLs. La primera imagen será la principal.</p>
             </div>
             <button class="ghost-button" type="button" @click="addImageUrl">Agregar URL</button>
           </div>

@@ -38,7 +38,7 @@ onMounted(async () => {
     <section class="panel" style="margin-top: 18px">
       <h2>Ventas recientes</h2>
       <p class="price">{{ money(stats.revenue, 'USD') }}</p>
-      <p class="muted">Suma de los últimos pedidos cargados desde la API.</p>
+      <p class="muted">Suma de los últimos pedidos cargados desde el sistema.</p>
     </section>
   </section>
 </template>

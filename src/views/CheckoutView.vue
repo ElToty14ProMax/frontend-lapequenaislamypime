@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { LocateFixed, MapPin } from 'lucide-vue-next';
 
 import EmptyState from '@/components/EmptyState.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
@@ -21,6 +22,9 @@ const notes = ref('');
 const error = ref('');
 const success = ref('');
 const saving = ref(false);
+const selectingAddress = ref(false);
+const showAddressForm = ref(false);
+const locating = ref(false);
 const addressForm = reactive<Partial<Address>>({
   label: 'Casa',
   recipient_name: auth.user?.name ?? '',
@@ -31,26 +35,67 @@ const addressForm = reactive<Partial<Address>>({
   street: '',
   between_streets: '',
   reference: '',
+  latitude: null,
+  longitude: null,
   is_default: true,
 });
 
 const selectedAddress = computed(() => addresses.value.find((item) => item.id === selectedAddressId.value));
+const mapQuery = computed(() => {
+  if (!selectedAddress.value) return 'Santa Clara, Villa Clara, Cuba';
+  if (selectedAddress.value.latitude && selectedAddress.value.longitude) {
+    return `${selectedAddress.value.latitude},${selectedAddress.value.longitude}`;
+  }
+  return `${selectedAddress.value.street}, ${selectedAddress.value.municipality}, ${selectedAddress.value.province}, Cuba`;
+});
 
 async function load() {
   await cart.load();
   addresses.value = await api.addresses();
   selectedAddressId.value = addresses.value.find((item) => item.is_default)?.id ?? addresses.value[0]?.id ?? null;
+  showAddressForm.value = addresses.value.length === 0;
 }
 
 async function saveAddress() {
   error.value = '';
+  success.value = '';
+  ui.start('Guardando dirección...');
   try {
     const address = await api.createAddress(addressForm);
     addresses.value.unshift(address);
     selectedAddressId.value = address.id;
+    showAddressForm.value = false;
+    selectingAddress.value = false;
+    success.value = 'Dirección guardada y seleccionada para este pedido.';
+    ui.toast(success.value, 'success');
   } catch (err) {
     error.value = firstValidationMessage(err);
+    ui.toast(error.value, 'error');
+  } finally {
+    ui.stop();
   }
+}
+
+function useCurrentLocation() {
+  error.value = '';
+  if (!navigator.geolocation) {
+    error.value = 'Tu navegador no permite obtener la ubicación automáticamente.';
+    return;
+  }
+  locating.value = true;
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      addressForm.latitude = Number(position.coords.latitude.toFixed(7));
+      addressForm.longitude = Number(position.coords.longitude.toFixed(7));
+      locating.value = false;
+      ui.toast('Ubicación marcada. Revisa la dirección antes de guardar.', 'success');
+    },
+    () => {
+      locating.value = false;
+      error.value = 'No se pudo obtener tu ubicación. Puedes escribir la dirección manualmente.';
+    },
+    { enableHighAccuracy: true, timeout: 10000 },
+  );
 }
 
 function approvalUrl(paypal: Record<string, any>) {
@@ -59,7 +104,8 @@ function approvalUrl(paypal: Record<string, any>) {
 
 async function payWithPaypal() {
   if (!selectedAddressId.value) {
-    error.value = 'Debes seleccionar o crear una dirección.';
+    error.value = 'Debes seleccionar o crear una dirección antes de pagar.';
+    showAddressForm.value = true;
     return;
   }
   saving.value = true;
@@ -115,7 +161,7 @@ onMounted(async () => {
     <PageHeader
       eyebrow="Pago y domicilio"
       title="Checkout"
-      text="PayPal se procesa en USD. La API conserva el snapshot de conversión USD/CUP del pedido."
+      text="PayPal procesa el pedido en USD. Si tu cuenta está en otra moneda, PayPal debe convertirla o permitir pago internacional."
     />
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -126,24 +172,78 @@ onMounted(async () => {
     <section v-else class="checkout-layout">
       <div class="stack">
         <section class="panel">
-          <h2>Dirección</h2>
-          <div v-if="addresses.length" class="stack">
-            <label v-for="address in addresses" :key="address.id" class="address-card">
-              <input v-model="selectedAddressId" type="radio" :value="address.id" />
-              <strong>{{ address.label }} · {{ address.recipient_name }}</strong>
-              <p class="muted">{{ address.street }}, {{ address.municipality }}, {{ address.province }}</p>
+          <div class="section-heading compact-heading">
+            <div>
+              <p class="eyebrow">Obligatorio para comprar</p>
+              <h2>Dirección de entrega</h2>
+            </div>
+            <button class="ghost-button" type="button" @click="showAddressForm = !showAddressForm">
+              {{ showAddressForm ? 'Ocultar formulario' : 'Nueva dirección' }}
+            </button>
+          </div>
+
+          <div v-if="selectedAddress && !selectingAddress" class="selected-address">
+            <MapPin :size="22" />
+            <div>
+              <strong>{{ selectedAddress.label }} · {{ selectedAddress.recipient_name }}</strong>
+              <p class="muted">{{ selectedAddress.street }}, {{ selectedAddress.municipality }}, {{ selectedAddress.province }}</p>
+            </div>
+            <button class="secondary-button" type="button" @click="selectingAddress = true">Seleccionar otra</button>
+          </div>
+
+          <div v-if="selectingAddress || !selectedAddress" class="stack">
+            <label v-for="address in addresses" :key="address.id" class="address-card selectable-address">
+              <input v-model="selectedAddressId" type="radio" :value="address.id" @change="selectingAddress = false" />
+              <span>
+                <strong>{{ address.label }} · {{ address.recipient_name }}</strong>
+                <p class="muted">{{ address.street }}, {{ address.municipality }}, {{ address.province }}</p>
+              </span>
             </label>
           </div>
-          <form class="admin-form" @submit.prevent="saveAddress">
+
+          <p v-if="!addresses.length && !showAddressForm" class="error">
+            Debes crear una dirección obligatoriamente para poder comprar.
+          </p>
+
+          <form v-if="showAddressForm" class="admin-form address-form" @submit.prevent="saveAddress">
             <h3>Nueva dirección</h3>
-            <input v-model="addressForm.recipient_name" placeholder="Nombre de quien recibe" required />
-            <input v-model="addressForm.phone" placeholder="Teléfono" required />
-            <input v-model="addressForm.province" placeholder="Provincia" required />
-            <input v-model="addressForm.municipality" placeholder="Municipio" required />
-            <input v-model="addressForm.street" placeholder="Calle, numero, edificio" required />
-            <input v-model="addressForm.between_streets" placeholder="Entre calles" />
-            <textarea v-model="addressForm.reference" placeholder="Referencia de entrega"></textarea>
-            <button class="secondary-button" type="submit">Guardar dirección</button>
+            <label class="field required-field">
+              <span>Nombre de quien recibe</span>
+              <input v-model="addressForm.recipient_name" required autocomplete="name" />
+            </label>
+            <label class="field required-field">
+              <span>Teléfono</span>
+              <input v-model="addressForm.phone" required autocomplete="tel" />
+            </label>
+            <label class="field required-field">
+              <span>Provincia</span>
+              <input v-model="addressForm.province" required />
+            </label>
+            <label class="field required-field">
+              <span>Municipio</span>
+              <input v-model="addressForm.municipality" required />
+            </label>
+            <label class="field required-field">
+              <span>Calle, número, edificio</span>
+              <input v-model="addressForm.street" required />
+            </label>
+            <label class="field">
+              <span>Entre calles</span>
+              <input v-model="addressForm.between_streets" />
+            </label>
+            <label class="field">
+              <span>Referencia de entrega</span>
+              <textarea v-model="addressForm.reference"></textarea>
+            </label>
+            <button class="secondary-button" type="button" :disabled="locating" @click="useCurrentLocation">
+              <LocateFixed :size="18" />
+              {{ locating ? 'Marcando ubicación...' : 'Marcar mi ubicación' }}
+            </button>
+            <p class="muted">
+              El mapa sirve como referencia visual. Para convertir un pin en dirección exacta hace falta activar un
+              servicio de geocodificación en el backend.
+            </p>
+            <button class="primary-button" type="submit">Guardar y seleccionar</button>
           </form>
         </section>
 
@@ -153,7 +253,7 @@ onMounted(async () => {
             class="map-frame"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
-            :src="`https://www.google.com/maps?q=${encodeURIComponent(`${selectedAddress.street}, ${selectedAddress.municipality}, ${selectedAddress.province}, Cuba`)}&output=embed`"
+            :src="`https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed`"
           ></iframe>
         </section>
       </div>
@@ -163,10 +263,16 @@ onMounted(async () => {
         <p class="muted">{{ cart.count }} productos</p>
         <p class="price">{{ money(cart.totalCents, cart.currency) }}</p>
         <label class="field">
-          <span>Notas</span>
-          <textarea v-model="notes" placeholder="Indicaciones para domicilio"></textarea>
+          <span>Notas para domicilio</span>
+          <textarea v-model="notes" placeholder="Indicaciones para la entrega"></textarea>
         </label>
-        <button class="primary-button" type="button" :disabled="saving" @click="payWithPaypal">Pagar con PayPal</button>
+        <p class="muted">
+          Si tu cuenta de PayPal está en reales u otra moneda, PayPal normalmente hace la conversión. Si no permite pagar,
+          revisa que la cuenta o el sandbox acepte pagos internacionales en USD.
+        </p>
+        <button class="primary-button" type="button" :disabled="saving || !selectedAddressId" @click="payWithPaypal">
+          Pagar con PayPal
+        </button>
       </aside>
     </section>
   </main>

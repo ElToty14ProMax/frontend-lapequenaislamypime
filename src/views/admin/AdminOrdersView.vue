@@ -4,9 +4,12 @@ import { onMounted, ref } from 'vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import PageHeader from '@/components/ui/PageHeader.vue';
 import { api, firstValidationMessage, money } from '@/services/api';
+import { useUiStore } from '@/stores/ui';
 import type { Order, OrderStatus, Paginated } from '@/types/api';
+import { statusLabel } from '@/utils/status';
 
 const orders = ref<Paginated<Order> | null>(null);
+const ui = useUiStore();
 const selected = ref<Order | null>(null);
 const status = ref<OrderStatus>('preparing');
 const comment = ref('');
@@ -26,13 +29,31 @@ async function open(order: Order) {
 async function updateStatus() {
   if (!selected.value) return;
   error.value = '';
+  ui.start('Actualizando pedido...');
   try {
     selected.value = await api.updateOrderStatus(selected.value.id, status.value, comment.value || undefined);
     comment.value = '';
     await load();
+    ui.toast('Estado del pedido actualizado.', 'success');
   } catch (err) {
     error.value = firstValidationMessage(err);
+    ui.toast(error.value, 'error');
+  } finally {
+    ui.stop();
   }
+}
+
+async function quickStatus(nextStatus: OrderStatus) {
+  if (!selected.value) return;
+  const accepted = await ui.confirm({
+    title: 'Cambiar estado',
+    message: `¿Quieres marcar el pedido ${selected.value.number} como ${statusLabel(nextStatus).toLowerCase()}?`,
+    confirmText: 'Sí, actualizar',
+    danger: nextStatus === 'cancelled' || nextStatus === 'refunded',
+  });
+  if (!accepted) return;
+  status.value = nextStatus;
+  await updateStatus();
 }
 
 onMounted(load);
@@ -62,11 +83,17 @@ onMounted(load);
         <p class="price">{{ money(selected.total_cents, selected.currency) }}</p>
         <p class="muted">{{ selected.address?.street }}, {{ selected.address?.municipality }}</p>
         <form class="admin-form" @submit.prevent="updateStatus">
-          <select v-model="status"><option v-for="item in statuses" :key="item" :value="item">{{ item }}</option></select>
+          <select v-model="status"><option v-for="item in statuses" :key="item" :value="item">{{ statusLabel(item) }}</option></select>
           <textarea v-model="comment" placeholder="Comentario para historial"></textarea>
           <button class="primary-button" type="submit">Actualizar estado</button>
         </form>
-        <h3>Items</h3>
+        <div class="action-row" style="margin-top: 12px">
+          <button class="secondary-button" type="button" @click="quickStatus('preparing')">Preparar</button>
+          <button class="secondary-button" type="button" @click="quickStatus('out_for_delivery')">Enviar</button>
+          <button class="secondary-button" type="button" @click="quickStatus('delivered')">Entregar</button>
+          <button class="danger-button" type="button" @click="quickStatus('cancelled')">Cancelar</button>
+        </div>
+        <h3>Productos</h3>
         <p v-for="item in selected.items" :key="item.id">{{ item.quantity }} x {{ item.product_name }}</p>
       </aside>
     </div>

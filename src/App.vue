@@ -3,7 +3,9 @@ import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
 
 import SiteHeader from '@/components/SiteHeader.vue';
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue';
 import LoadingOverlay from '@/components/ui/LoadingOverlay.vue';
+import ToastStack from '@/components/ui/ToastStack.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useCatalogStore } from '@/stores/catalog';
 import { useUiStore } from '@/stores/ui';
@@ -25,4 +27,6 @@ onMounted(async () => {
     </Transition>
   </RouterView>
   <LoadingOverlay :active="ui.blocking" :message="ui.message" />
+  <ConfirmDialog />
+  <ToastStack />
 </template>

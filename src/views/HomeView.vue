@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { Clock, MapPin, ShieldCheck, Truck, WalletCards } from 'lucide-vue-next';
 
@@ -17,8 +17,10 @@ const catalog = useCatalogStore();
 const auth = useAuthStore();
 const cart = useCartStore();
 const router = useRouter();
+const featuredQuery = { per_page: 6, sort: 'newest' };
 
-onMounted(() => catalog.loadProducts({ per_page: 6, sort: 'newest' }));
+onMounted(() => catalog.loadProducts(featuredQuery));
+watch(() => catalog.currency, () => catalog.loadProducts(featuredQuery));
 
 async function add(product: Product) {
   if (!auth.isAuthenticated) {
@@ -42,10 +44,11 @@ async function add(product: Product) {
         </p>
         <div class="hero-actions">
           <AppButton to="/catalogo">Comprar ahora</AppButton>
-          <AppButton variant="secondary" href="https://www.facebook.com/share/156hw1ihCY/">
-            Facebook
-          </AppButton>
-          <AppButton variant="secondary" href="https://www.instagram.com/la_pequena_isla?utm_source=qr&igsh=MTJ1aHVrYWw5bW84dw==">
+          <AppButton variant="secondary" href="https://www.facebook.com/share/156hw1ihCY/">Facebook</AppButton>
+          <AppButton
+            variant="secondary"
+            href="https://www.instagram.com/la_pequena_isla?utm_source=qr&igsh=MTJ1aHVrYWw5bW84dw=="
+          >
             Instagram
           </AppButton>
         </div>
@@ -86,7 +89,7 @@ async function add(product: Product) {
           <span class="glass-chip">Gastronomía y comercio</span>
           <h2>Una tienda local con experiencia digital.</h2>
           <p>
-            El frontend está pensado para compra repetida: búsqueda rápida, moneda visible, carrito protegido,
+            El sistema está pensado para compra repetida: búsqueda rápida, moneda visible, carrito protegido,
             direcciones guardadas, seguimiento de pedidos y administración clara.
           </p>
           <div class="hero-actions">
@@ -111,7 +114,7 @@ async function add(product: Product) {
         <div>
           <p class="eyebrow">Inventario actualizado</p>
           <h2>Productos recientes</h2>
-          <p>Disponibilidad, stock y precios sincronizados con la API.</p>
+          <p>Disponibilidad, stock y precios sincronizados con el sistema.</p>
         </div>
         <RouterLink class="ghost-button" to="/catalogo">Ver catálogo</RouterLink>
       </section>
